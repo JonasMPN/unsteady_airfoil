@@ -1,4 +1,4 @@
-from Geometry import Geometry
+from src.Geometry import Geometry
 import matplotlib.pyplot as plt
 import numpy as np
 
