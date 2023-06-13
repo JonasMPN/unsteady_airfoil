@@ -5,39 +5,30 @@ from copy import copy
 class Geometry:
 	def __init__(self):
 		# The following use of 'N' denotes an integer, it does not mean that 'N' is the same value everywhere.
-		self.control_points = None		# np.ndarray of size (N, 2) with columns [x, y]
-		self.bound_vortices = None		# np.ndarray of size (N, 2) with columns [x, y]
-		self.trailing_vortices = None	# np.ndarray of size (N, 2) with columns [x, y]
+		self.control_points = None			# np.ndarray of size (N, 2) with columns [x, y]
+		self.bound_vortices = None			# np.ndarray of size (N, 2) with columns [x, y]
+		self.trailing_vortices = None		# np.ndarray of size (N, 2) with columns [x, y]
+		self.plate_normal = None
 		
 		self.control_points_base = None
 		self.bound_vortices_base = None
+		self.plate_elem_length = None
 		
 		self.dt = None 					# time step duration
 		self.inflow_speed = None		# inflow speed to the flat plate
+		self.aoa = None
 		self.n_time_steps = None
 		self.time_step_counter = 0
 		self.plate_res = None
+		self.lhs = None
+		self.trailing_induction_matrix = None
+		self.bound_distances_v_0 = None
 
 	def set(self, dt: float, n_time_steps: int):
 		self._set(**{param: value for param, value in locals().items() if param != "self"})
 		self.trailing_vortices = np.zeros((n_time_steps, 2))
-		
-	def update_aoa(self, angle_of_attack: float) -> None:
-		"""
-		
-		:param angle_of_attack: in radians
-		:return:
-		"""
-		self.bound_vortices = self._rotate(self.bound_vortices_base, angle_of_attack)
-		self.control_points = self._rotate(self.control_points_base, angle_of_attack)
-		return None
-		
-	def get_positions(self):
-		return {"bound_vortices": copy(self.bound_vortices),
-				"trailing_vortices": copy(self.trailing_vortices[:self.time_step_counter, :][::-1]),
-				"control_points": copy(self.control_points)}
 
-	def set_blade(self, plate_length: float, plate_res: int, angle_of_attack: float) -> None:
+	def set_blade(self, plate_length: float, plate_res: int) -> None:
 		"""
 		  - Update "bound_vortices" and "control_points"
 		  - Uses: self.rotate()
@@ -47,27 +38,74 @@ class Geometry:
 		:return:
 		"""
 		self.plate_res = plate_res
-		quarter_distance = plate_length/(4*plate_res)
-		bound_vortices_x = np.linspace(0, plate_length, plate_res)+quarter_distance
+		self.plate_elem_length = plate_length/plate_res
+		quarter_distance = self.plate_elem_length/4
+		bound_vortices_x = np.asarray([quarter_distance+i*self.plate_elem_length for i in range(plate_res)])
 		bound_vortices = np.append([bound_vortices_x], np.zeros((1, plate_res)), axis=0).T
 		control_points = np.append([bound_vortices_x+2*quarter_distance], np.zeros((1, plate_res)), axis=0).T
 		self.bound_vortices_base = bound_vortices
 		self.control_points_base = control_points
-		self.bound_vortices = self._rotate(bound_vortices, angle_of_attack)
-		self.control_points = self._rotate(control_points, angle_of_attack)
 		return None
 
-	def advect_trailing_vortices(self, induced_velocities: np.ndarray, inflow_speed: float) -> None:
+	def update_flow(self, angle_of_attack: float, inflow_speed: float) -> None:
 		"""
 		
-		:param induced_velocities:
 		:param inflow_speed:
+		:param angle_of_attack: in radians
 		:return:
 		"""
-		self.trailing_vortices[self.time_step_counter, :] = 5*self.bound_vortices[0, :]*self.plate_res
-		inflow_speed = np.append(inflow_speed*np.ones((self.time_step_counter, 1)),
-								 np.zeros((self.time_step_counter, 1)), axis=1)
-		self.trailing_vortices[:self.time_step_counter, :] += (induced_velocities+inflow_speed)*self.dt
+		self.aoa = -angle_of_attack  # positive aoas are defined for negative angles in the coordinate system
+		self.inflow_speed = inflow_speed
+		self.bound_vortices = self._rotate(self.bound_vortices_base, self.aoa)
+		self.control_points = self._rotate(self.control_points_base, self.aoa)
+		self.plate_normal, _ = self._get_unit_normal(self.bound_vortices[0, :])
+
+		if self.lhs is None:
+			self._init_lhs_matrix()
+		self.advect_trailing_vortices(np.zeros((self.time_step_counter, 2)))
+		self.get_trailing_induction_matrix()
+		self.time_step_counter -= 1
+		self.lhs[:-1, -1] = self.trailing_induction_matrix[:, -1]
+		return None
+		
+	def get_positions(self):
+		return {"bound_vortices": copy(self.bound_vortices),
+				"trailing_vortices": copy(self.trailing_vortices[:self.time_step_counter, :]),
+				"control_points": copy(self.control_points)}
+
+	def get_normals(self):
+		return {"plate": copy(self.plate_normal)}
+
+	def get_trailing_induction_matrix(self):
+		mat = np.zeros((self.plate_res, self.time_step_counter))
+		for i_cp, cp in enumerate(self.control_points):
+			for i_trailing, trailing_vortex in enumerate(self.trailing_vortices[:self.time_step_counter]):
+				vortex_to_cp = cp-trailing_vortex
+				induction_direction, distance = self._get_unit_normal(vortex_to_cp)
+				mat[i_cp, i_trailing] = self.plate_normal@induction_direction/(2*np.pi*distance)
+		self.trailing_induction_matrix = mat
+		return copy(self.trailing_induction_matrix)
+
+	def get_lhs_matrix(self):
+		if self.lhs is None:
+			print("Initialising a LHS matrix for an inflow velocity of 0m/s")
+			self._init_lhs_matrix()
+		return copy(self.lhs)
+
+	def advect_trailing_vortices(self, induced_velocities: np.ndarray, new_trailing_fac: float=0.5) -> None:
+		"""S
+		
+		:param new_trailing_fac:
+		:param induced_velocities:
+		:return:
+		"""
+		trailing_edge = self.control_points[-1, :]+self.bound_vortices[0, :]
+		distance_traveled = self.inflow_speed*self.dt
+		new_trailing_pos = 1.25*trailing_edge+new_trailing_fac*np.asarray([distance_traveled, 0])
+		self.trailing_vortices[self.time_step_counter, :] = new_trailing_pos
+		v_inflow_speed = np.append(self.inflow_speed*np.ones((self.time_step_counter, 1)),
+								   np.zeros((self.time_step_counter, 1)), axis=1)
+		self.trailing_vortices[:self.time_step_counter, :] += (induced_velocities+v_inflow_speed)*self.dt
 		self.time_step_counter += 1
 		return None
 	
@@ -83,9 +121,19 @@ class Geometry:
 				raise ValueError(f"Parameter {parameter} cannot be set. Settable parameters are {existing_parameters}.")
 			self.__dict__[parameter] = value
 		return None
-	
+
+	def _init_lhs_matrix(self):
+		self.bound_distances_v_0 = np.asarray([self.plate_elem_length/2+self.plate_elem_length*i for i in
+											   range(self.plate_res)])
+		self.bound_distances_v_0 = np.append(self.bound_distances_v_0[::-1], -self.bound_distances_v_0)
+		inductions = 1/(2*np.pi*self.bound_distances_v_0)
+		self.lhs = np.ones((self.plate_res+1, self.plate_res+1))
+		for i in range(self.plate_res):
+			self.lhs[i, :] = inductions[self.plate_res-i-1:2*self.plate_res-i]
+		return None
+
 	@staticmethod
-	def _rotate(to_rotate, angle):
+	def _rotate(to_rotate: np.ndarray, angle: float):
 		"""
 		Update the "parameter" (could be either "bound_vortices" or "control_points"). This function rotates the
 		coordinates from the input variable "to_rotate".
@@ -93,7 +141,12 @@ class Geometry:
 		:param angle: rotation angle in radians
 		:return:
 		"""
-		angle = -angle
-		rot_matrix = np.asarray([[np.cos(angle), np.sin(angle)],
-								 [-np.sin(angle), np.cos(angle)]])
-		return np.dot(to_rotate, rot_matrix)
+		rot_matrix = np.asarray([[np.cos(angle), -np.sin(angle)],
+								 [np.sin(angle), np.cos(angle)]])
+		return to_rotate@rot_matrix.T
+
+	@staticmethod
+	def _get_unit_normal(unit_normal_for: np.ndarray):
+		vector_length = np.linalg.norm(unit_normal_for)
+		normalised = unit_normal_for/vector_length
+		return np.asarray([-normalised[1], normalised[0]]), vector_length
