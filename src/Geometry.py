@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from copy import copy
 
@@ -24,7 +25,7 @@ class Geometry:
 		self.trailing_induction_matrix = None
 		self.bound_distances_v_0 = None
 
-	def set(self, dt: float, n_time_steps: int):
+	def set_constants(self, dt: float, n_time_steps: int):
 		self._set(**{param: value for param, value in locals().items() if param != "self"})
 		self.trailing_vortices = np.zeros((n_time_steps, 2))
 
@@ -58,11 +59,11 @@ class Geometry:
 		self.inflow_speed = inflow_speed
 		self.bound_vortices = self._rotate(self.bound_vortices_base, self.aoa)
 		self.control_points = self._rotate(self.control_points_base, self.aoa)
-		self.plate_normal, _ = self._get_unit_normal(self.bound_vortices[0, :])
+		self.plate_normal, _ = self._unit_normal_and_length(self.bound_vortices[0, :])
 
 		if self.lhs is None:
 			self._init_lhs_matrix()
-		self.advect_trailing_vortices(np.zeros((self.time_step_counter, 2)))
+		self.displace_trailing_vortices(np.zeros((self.time_step_counter, 2)))
 		self.get_trailing_induction_matrix()
 		self.time_step_counter -= 1
 		self.lhs[:-1, -1] = self.trailing_induction_matrix[:, -1]
@@ -81,7 +82,7 @@ class Geometry:
 		for i_cp, cp in enumerate(self.control_points):
 			for i_trailing, trailing_vortex in enumerate(self.trailing_vortices[:self.time_step_counter]):
 				vortex_to_cp = cp-trailing_vortex
-				induction_direction, distance = self._get_unit_normal(vortex_to_cp)
+				induction_direction, distance = self._unit_normal_and_length(vortex_to_cp)
 				mat[i_cp, i_trailing] = self.plate_normal@induction_direction/(2*np.pi*distance)
 		self.trailing_induction_matrix = mat
 		return copy(self.trailing_induction_matrix)
@@ -92,7 +93,39 @@ class Geometry:
 			self._init_lhs_matrix()
 		return copy(self.lhs)
 
-	def advect_trailing_vortices(self, induced_velocities: np.ndarray, new_trailing_fac: float=0.5) -> None:
+	def get_trailing_displacement_matrices(self, additional_vortices: np.ndarray = None):
+		mat_bound_x = np.zeros((self.time_step_counter, self.plate_res))
+		mat_bound_y = np.zeros((self.time_step_counter, self.plate_res))
+		mat_trailing_x = np.zeros((self.time_step_counter, self.time_step_counter))
+		mat_trailing_y = np.zeros((self.time_step_counter, self.time_step_counter))
+		mat_additional_x = None if additional_vortices is None else np.zeros((additional_vortices.shape[0],
+																			self.time_step_counter))
+		mat_additional_y = None if additional_vortices is None else np.zeros((additional_vortices.shape[0],
+																			self.time_step_counter))
+		if additional_vortices is not None:
+			raise NotImplementedError("Additional vortices are not implemented yet.")
+
+		for i_trailing, trailing_vortex in enumerate(self.trailing_vortices[:self.time_step_counter]):
+			for i_bound, bound_vortex in enumerate(self.bound_vortices):
+				bound_to_trailing = trailing_vortex-bound_vortex
+				induction_direction, distance = self._unit_normal_and_length(bound_to_trailing)
+				mat_bound_x[i_trailing, i_bound] = induction_direction[0]/distance
+				mat_bound_y[i_trailing, i_bound] = induction_direction[1]/distance
+
+		for i_inducing, v_inducing in enumerate(self.trailing_vortices[:self.time_step_counter]):
+			vortices_induced = self.trailing_vortices[i_inducing+1:self.time_step_counter]
+			for j, v_induced in enumerate(vortices_induced):
+				inducing_to_induced = v_induced-v_inducing
+				induction_direction, distance = self._unit_normal_and_length(inducing_to_induced)
+				mat_trailing_x[i_inducing, j+i_inducing+1] = induction_direction[0]/distance
+				mat_trailing_y[i_inducing, j+i_inducing+1] = induction_direction[1]/distance
+
+		correction = 1/(2*np.pi)
+		return {"x": mat_bound_x*correction, "y": mat_bound_y*correction}, \
+			   {"x": (-mat_trailing_x+mat_trailing_x.T)*correction, "y": (-mat_trailing_y+mat_trailing_y.T)*correction}, \
+			   {"x": mat_additional_x, "y": mat_additional_y}
+
+	def displace_trailing_vortices(self, induced_velocities: np.ndarray, new_trailing_fac: float=1) -> None:
 		"""S
 		
 		:param new_trailing_fac:
@@ -101,14 +134,26 @@ class Geometry:
 		"""
 		trailing_edge = self.control_points[-1, :]+self.bound_vortices[0, :]
 		distance_traveled = self.inflow_speed*self.dt
-		new_trailing_pos = 1.25*trailing_edge+new_trailing_fac*np.asarray([distance_traveled, 0])
+		new_trailing_pos = trailing_edge+new_trailing_fac*np.asarray([distance_traveled, 0])
 		self.trailing_vortices[self.time_step_counter, :] = new_trailing_pos
 		v_inflow_speed = np.append(self.inflow_speed*np.ones((self.time_step_counter, 1)),
 								   np.zeros((self.time_step_counter, 1)), axis=1)
 		self.trailing_vortices[:self.time_step_counter, :] += (induced_velocities+v_inflow_speed)*self.dt
 		self.time_step_counter += 1
 		return None
-	
+
+	def plot_vortices(self, show: bool = True):
+		fig, ax = plt.subplots()
+		positions = self.get_positions()
+		bound, trailing, cp = positions["bound_vortices"], positions["trailing_vortices"], positions["control_points"]
+		ax.plot(bound[:, 0], bound[:, 1], "xr")
+		ax.plot(trailing[:, 0], trailing[:, 1], "xg")
+		ax.plot(cp[:, 0], cp[:, 1], "xk")
+		if show:
+			plt.show()
+		else:
+			return fig, ax
+
 	def _set(self, **kwargs) -> None:
 		"""
 		Sets any parameters of the instance. Raises an error if a parameter is trying to be set that doesn't exist.
@@ -146,7 +191,7 @@ class Geometry:
 		return to_rotate@rot_matrix.T
 
 	@staticmethod
-	def _get_unit_normal(unit_normal_for: np.ndarray):
+	def _unit_normal_and_length(unit_normal_for: np.ndarray):
 		vector_length = np.linalg.norm(unit_normal_for)
 		normalised = unit_normal_for/vector_length
 		return np.asarray([-normalised[1], normalised[0]]), vector_length
