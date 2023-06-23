@@ -14,7 +14,7 @@ class Induction:
 				   plate_control_points: np.ndarray,
 				   flap_control_points: np.ndarray=None):
 		plate_normal, _ = self._unit_normal_and_length(bound_vortices[0, :])
-		flap_normal = None if self.n_cp == 0 else self._flap_normal(plate_control_points, flap_control_points)[0]
+		flap_normal = None if self.n_cp == 0 else self._flap_normal(plate_control_points, flap_control_points)
 		
 		lhs = np.ones((self.n_cp+1, self.n_cp+1))
 		control_points = plate_control_points if self.n_cp == 0 else np.r_[plate_control_points, flap_control_points]
@@ -51,8 +51,8 @@ class Induction:
 				induced = self._induction(inducing_vortex, free_vortex)
 				fvi_free_mat_x[i_fv, i_inducing+i_fv+1] = induced[0]
 				fvi_free_mat_y[i_fv, i_inducing+i_fv+1] = induced[1]
-		fvi_free_mat_x = -fvi_free_mat_x+fvi_free_mat_x.T
-		fvi_free_mat_y = -fvi_free_mat_y+fvi_free_mat_y.T
+		fvi_free_mat_x = fvi_free_mat_x-fvi_free_mat_x.T
+		fvi_free_mat_y = fvi_free_mat_y-fvi_free_mat_y.T
 		
 		fvi_bound_mat_x = np.zeros((free_vortices.shape[0], bound_vortices.shape[0]))
 		fvi_bound_mat_y = np.zeros((free_vortices.shape[0], bound_vortices.shape[0]))
@@ -72,12 +72,12 @@ class Induction:
 			return self._unit_normal_and_length(flap_control_points[1, :]-flap_control_points[0, :])
 		else:
 			vec_from = plate_control_points[-1, :]+plate_control_points[0, :]/3
-			return self._unit_normal_and_length(flap_control_points[0, :]-vec_from)
+			return self._unit_normal_and_length(flap_control_points[0, :]-vec_from)[0]
 		
 	@staticmethod
 	def _unit_normal_and_length(unit_normal_for: np.ndarray):
 		vector_length = np.linalg.norm(unit_normal_for)
 		normalised = unit_normal_for/vector_length
-		return np.asarray([-normalised[1], normalised[0]]), vector_length
+		return np.r_[-normalised[1], normalised[0]], vector_length
 
 		
