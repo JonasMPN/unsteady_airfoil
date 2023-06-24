@@ -67,7 +67,7 @@ class UnsteadyAirfoil:
 				plate_normal, flap_normal = self.geometry.get_normals()
 				plate_inflow = np.asarray([inflow[0], inflow[1]])@plate_normal
 				flap_inflow = np.asarray([inflow[0], inflow[1]])@flap_normal
-				normal_inflow = np.r_[plate_inflow*np.ones((self.plate_res, 1)), flap_inflow*np.ones((self.flap_res, 1))]
+				normal_inflow = np.r_[plate_inflow, flap_inflow].reshape(self.plate_res+self.flap_res, 1)
 				old_plate_angle, old_flap_angle, old_inflow = plate_angle, flap_angle, inflow
 			else:
 				self.geometry.shed_vortex(inflow=inflow, time_step=dt, new_trailing_fac=shed_trailing_distance)
@@ -78,7 +78,7 @@ class UnsteadyAirfoil:
 			                                             vortices=surrounding_vortices[:dt_i])
 			induction_from_surrounding = cpi@surrounding_circulation[:dt_i]
 			bound_circulation = -inv_lhs@(np.r_[normal_inflow+induction_from_surrounding,
-			                                   [[np.sum(surrounding_circulation[self.n_free_vortices:dt_i]), ]]])
+			                                    [[np.sum(surrounding_circulation[self.n_free_vortices:dt_i]), ]]])
 			surrounding_circulation[dt_i, 0] = bound_circulation[-1]
 
 			surrounding_vortices = np.r_[free, trailing]
@@ -96,11 +96,9 @@ class UnsteadyAirfoil:
 			self.geometry.displace_vortices(velocities=np.c_[x_vel, y_vel]+background_flow, time_step=dt)
 			
 			if (dt_i-self.n_free_vortices) % 20 == 0:
-				print("iteration: ", dt_i-self.n_free_vortices, "bound circulation: ", np.sum(bound_circulation[:-1]))
+				print("iteration: ", dt_i-self.n_free_vortices)
 		self.geometry.plot()
-		
-		
-	
+			
 			
 			
 		
