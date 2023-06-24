@@ -8,8 +8,8 @@ test = {
 	"cp_induction": False,
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
-	"without_free": False,
-	"with_free": True
+	"without_free": True,
+	"with_free": False
 }
 
 
@@ -83,7 +83,7 @@ if test["free_vortex_induction"]:
 
 if test["lhs_matrix"]:
 	time_steps = 10
-	dt = 0.1
+	dt = 0.05
 	blade_res = 2
 	flap_res = 2
 	geom = Geometry(time_steps)
@@ -100,7 +100,7 @@ if test["lhs_matrix"]:
 
 if test["without_free"]:
 	time_steps = 800
-	dt = 0.05
+	dt = 0.01
 	plate_res = 1
 	flap_res = 1
 	plate_length = 1
