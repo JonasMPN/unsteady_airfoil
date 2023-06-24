@@ -84,8 +84,8 @@ if test["free_vortex_induction"]:
 if test["lhs_matrix"]:
 	time_steps = 10
 	dt = 0.05
-	blade_res = 2
-	flap_res = 2
+	blade_res = 1
+	flap_res = 1
 	geom = Geometry(time_steps)
 	geom.set_plate(1, blade_res)
 	geom.set_flap(1, flap_res)
@@ -99,7 +99,7 @@ if test["lhs_matrix"]:
 	geom.plot(ls_trailing="x")
 
 if test["without_free"]:
-	time_steps = 800
+	time_steps = 100
 	dt = 0.01
 	plate_res = 1
 	flap_res = 1
