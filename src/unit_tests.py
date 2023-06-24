@@ -8,7 +8,8 @@ test = {
 	"cp_induction": False,
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
-	"without_free": True
+	"without_free": False,
+	"with_free": True
 }
 
 
@@ -38,7 +39,7 @@ if test["cp_induction"]:
 	geom.set_flap(0.5, flap_res)
 	geom.update_rotation(0, 0)
 	geom.shed_vortex((1, 0), time_step=0.5)
-	geom.add_free_vortices(np.asarray([[3, 0]]))
+	geom.add_free_vortices(np.asarray([[3, 1]]))
 	
 	ind = Induction(blade_res, flap_res)
 	
@@ -95,10 +96,10 @@ if test["lhs_matrix"]:
 	bound, control, trailing, free = geom.get_positions()
 	bound = np.r_[bound["plate"], bound["flap"]]
 	print(ind.lhs_matrix(bound, trailing[-1], control["plate"], control["flap"]))
-	geom.plot()
+	geom.plot(ls_trailing="x")
 
 if test["without_free"]:
-	time_steps = 100
+	time_steps = 800
 	dt = 0.05
 	plate_res = 1
 	flap_res = 1
@@ -106,7 +107,20 @@ if test["without_free"]:
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
 	plate_angles = np.zeros(time_steps)
-	plate_angles[10:] = -10
+	plate_angles[:] = -10
 	inflow = (1, 0)
 	unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow, flap_angles=0.0)
 	
+if test["with_free"]:
+	time_steps = 200
+	dt = 0.1
+	plate_res = 1
+	flap_res = 1
+	plate_length = 1
+	flap_length = 1
+	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
+	unsteady_airfoil.add_free_vortices(np.asarray([[0., 1.]]), -0.1)
+	plate_angles = np.zeros(time_steps)
+	plate_angles[:] = -10
+	inflow = (1, 0)
+	unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow, flap_angles=0.0)
