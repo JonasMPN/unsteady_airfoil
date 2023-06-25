@@ -99,10 +99,10 @@ if test["lhs_matrix"]:
 	geom.plot(ls_trailing="x")
 
 if test["without_free"]:
-	time_steps = 250
-	dt = 0.005
-	plate_res = 5
-	flap_res = 5
+	time_steps = 800
+	dt = 0.01
+	plate_res = 1
+	flap_res = 1
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
@@ -112,14 +112,14 @@ if test["without_free"]:
 	unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow, flap_angles=0.0)
 	
 if test["with_free"]:
-	time_steps = 100
+	time_steps = 250
 	dt = 0.005
 	plate_res = 1
 	flap_res = 1
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
-	unsteady_airfoil.add_free_vortices(np.asarray([[0., 5.]]), 0.1)
+	unsteady_airfoil.add_free_vortices(np.asarray([[0., 10.]]), 0.1)
 	plate_angles = np.zeros(time_steps)
 	plate_angles[:] = -10
 	inflow = (1, 0)

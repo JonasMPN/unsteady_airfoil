@@ -16,6 +16,8 @@ class UnsteadyAirfoil:
 		self.induction = Induction(plate_res, flap_res)
 		self.n_free_vortices = 0
 		
+		self.bound_circulation = {"plate": np.zeros(max_time_steps), "flap": np.zeros(max_time_steps)}
+		
 		self.geometry.set_plate(plate_length, plate_res)
 		if flap_res is not None:
 			self.geometry.set_flap(flap_length, flap_res)
@@ -36,7 +38,7 @@ class UnsteadyAirfoil:
 	          plate_angles: float or list or np.ndarray,
 	          inflows: tuple or list[list] or np.ndarray,
 	          flap_angles: float or list or np.ndarray = None,
-	          shed_trailing_distance: float = 0.5):
+	          shed_trailing_distance: float = 0.5) -> dict[str, np.ndarray]:
 		plate_angles = plate_angles if type(plate_angles) != float else [plate_angles for _ in range(self.n_time_steps)]
 		inflows = inflows if type(inflows) != tuple else [[inflows[0], inflows[1]] for _ in range(self.n_time_steps)]
 		if flap_angles is None:
@@ -94,11 +96,12 @@ class UnsteadyAirfoil:
 			y_vel = from_wake_velocities_y+from_bound_velocities_y
 			background_flow = np.asarray((dt_i+1)*[[inflow[0], inflow[1]]])
 			self.geometry.displace_vortices(velocities=np.c_[x_vel, y_vel]+background_flow, time_step=dt)
-			
+			self.bound_circulation["plate"][dt_i-self.n_free_vortices] = np.sum(bound_circulation[:self.plate_res])
+			self.bound_circulation["flap"][dt_i-self.n_free_vortices] = np.sum(bound_circulation[self.plate_res:])
 			if (dt_i-self.n_free_vortices) % 20 == 0:
 				print("iteration: ", dt_i-self.n_free_vortices, "bound circulation: ", np.sum(bound_circulation[:-1]))
-		self.geometry.plot()
-		
+		return self.bound_circulation
+	
 		
 	
 			
