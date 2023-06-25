@@ -1,3 +1,4 @@
+import matplotlib.animation
 import matplotlib.pyplot as plt
 import numpy as np
 from copy import copy
@@ -179,13 +180,13 @@ class Geometry:
             self.free_vortices += velocities[self.trailing_counter:, :]*time_step
         return None
     
-    def plot(self,
-             show=True,
-             plot_structure: bool = True,
-             ls_bound: str = "o",
-             ls_control: str = "x",
-             ls_trailing: str = "-",
-             ls_free: str = "x"):
+    def plot_final_state(self,
+                         show=True,
+                         plot_structure: bool = True,
+                         ls_bound: str = "o",
+                         ls_control: str = "x",
+                         ls_trailing: str = "-",
+                         ls_free: str = "x") -> None or tuple:
         """
         Plots the bound vortices, the control points, the trailing vortices, and the free vortices (if those are
         present).
@@ -219,8 +220,17 @@ class Geometry:
             ax.plot(self.free_vortices[:, 0], self.free_vortices[:, 1], ls_free)
         if show:
             plt.show()
-        return fig, ax
+            return None
+        else:
+            return fig, ax
     
+    def _flap_normal(self, plate_control_points: np.ndarray, flap_control_points: np.ndarray):
+        if self.flap_res > 1:
+            return self._unit_normal_and_length(flap_control_points[1, :]-flap_control_points[0, :])
+        else:
+            vec_from = plate_control_points[-1, :]+plate_control_points[0, :]/3
+            return self._unit_normal_and_length(flap_control_points[0, :]-vec_from)[0]
+
     @staticmethod
     def _rotate(to_rotate: np.ndarray, angle: float):
         """
@@ -234,15 +244,20 @@ class Geometry:
                                  [np.sin(angle), np.cos(angle)]])
         return to_rotate@rot_matrix.T
 
-    def _flap_normal(self, plate_control_points: np.ndarray, flap_control_points: np.ndarray):
-        if self.flap_res > 1:
-            return self._unit_normal_and_length(flap_control_points[1, :]-flap_control_points[0, :])
-        else:
-            vec_from = plate_control_points[-1, :]+plate_control_points[0, :]/3
-            return self._unit_normal_and_length(flap_control_points[0, :]-vec_from)[0]
-
     @staticmethod
     def _unit_normal_and_length(unit_normal_for: np.ndarray):
         vector_length = np.linalg.norm(unit_normal_for)
         normalised = unit_normal_for/vector_length
         return np.r_[-normalised[1], normalised[0]], vector_length
+
+
+def plot_process(bound_vortices: list[np.ndarray], control_points: list[np.ndarray],
+                 trailing_vortices: list[np.ndarray], free_vortices: list[np.ndarray],
+                 ls_bound: str = "o", ls_control: str = "x", ls_trailing: str = "-", ls_free: str = "x",
+                 show: bool = True) -> None or matplotlib.animation.Animation:
+    fig, ax = plt.subplots()
+    min_x = min(-0.1, np.min(free_vortices[:, 0]))
+    max_x = min(np.max(free_vortices[:, 0]), np.max(trailing_vortices[:, 0]))
+    min_y = min(np.min())
+    
+
