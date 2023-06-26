@@ -1,4 +1,4 @@
-import matplotlib.animation
+import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 from copy import copy
@@ -223,7 +223,7 @@ class Geometry:
             return None
         else:
             return fig, ax
-    
+
     def _flap_normal(self, plate_control_points: np.ndarray, flap_control_points: np.ndarray):
         if self.flap_res > 1:
             return self._unit_normal_and_length(flap_control_points[1, :]-flap_control_points[0, :])
@@ -251,13 +251,49 @@ class Geometry:
         return np.r_[-normalised[1], normalised[0]], vector_length
 
 
-def plot_process(bound_vortices: list[np.ndarray], control_points: list[np.ndarray],
-                 trailing_vortices: list[np.ndarray], free_vortices: list[np.ndarray],
+def plot_process(bound_vortices: np.ndarray, control_points: np.ndarray,
+                 trailing_vortices: np.ndarray, free_vortices: np.ndarray,
+                 plate_res: int=0, flap_res: int=0,
                  ls_bound: str = "o", ls_control: str = "x", ls_trailing: str = "-", ls_free: str = "x",
-                 show: bool = True) -> None or matplotlib.animation.Animation:
+                 show: bool = True) -> None or animation.Animation:
     fig, ax = plt.subplots()
-    min_x = min(-0.1, np.min(free_vortices[:, 0]))
-    max_x = min(np.max(free_vortices[:, 0]), np.max(trailing_vortices[:, 0]))
-    min_y = min(np.min())
-    
 
+    n_free_vortices = free_vortices.size
+    min_x_free = 0 if n_free_vortices == 0 else np.min(free_vortices[:, :, 0])
+    max_x_free = 0 if n_free_vortices == 0 else np.max(free_vortices[:, :, 0])
+    min_y_free = 0 if n_free_vortices == 0 else np.min(free_vortices[:, :, 1])
+    max_y_free = 0 if n_free_vortices == 0 else np.max(free_vortices[:, :, 1])
+
+    min_x_trailing, max_x_trailing, min_y_trailing, max_y_trailing = 0, 0, 0, 0
+    for i in range(trailing_vortices.shape[0]):
+        min_x_trailing = np.min(np.r_[min_x_free, trailing_vortices[i][:, 0]])
+        max_x_trailing = np.max(np.r_[max_x_free, trailing_vortices[i][:, 0]])
+        min_y_trailing = np.min(np.r_[min_y_free, trailing_vortices[i][:, 1]])
+        max_y_trailing = np.max(np.r_[max_y_free, trailing_vortices[i][:, 1]])
+
+    min_x = min(-0.1, min_x_free, min_x_trailing)
+    max_x = max(max_x_free, max_x_trailing)
+
+    min_y = min(min_y_free, min_y_trailing, np.min(bound_vortices[:, :, 1]))
+    max_y = max(max_y_free, max_y_trailing, np.max(bound_vortices[:, :, 1]))
+
+    ax.set(xlim=[min_x, max_x], ylim=[min_y, max_y])
+    line_bound, = ax.plot(bound_vortices[0, :, 0], bound_vortices[0, :, 1], ls_bound)
+    line_cp, = ax.plot(control_points[0, :, 0], control_points[0, :, 1], ls_control)
+    line_trailing, = ax.plot(trailing_vortices[0][:, 0], trailing_vortices[0][:, 1], ls_trailing)
+    line_free, = ax.plot(free_vortices[0, :, 0], free_vortices[0, :, 1], ls_free)
+    title = ax.text(0.5, 0, "0")
+
+    def update(frame: int):
+        line_bound.set_data(bound_vortices[frame, :, 0], bound_vortices[frame, :, 1])
+        line_cp.set_data(control_points[frame, :, 0], control_points[frame, :, 1])
+        line_trailing.set_data(trailing_vortices[frame][:, 0], trailing_vortices[frame][:, 1])
+        line_free.set_data(free_vortices[frame, :, 0], free_vortices[frame, :, 1])
+        title.set_text(frame)
+        return line_bound, line_cp, line_trailing, line_free, title
+
+    ani = animation.FuncAnimation(fig=fig, func=update, frames=bound_vortices.shape[0], interval=30, blit=True)
+    if show:
+        plt.show()
+    else:
+        return ani
