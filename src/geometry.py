@@ -271,11 +271,11 @@ def plot_process(bound_vortices: np.ndarray, control_points: np.ndarray,
         min_y_trailing = np.min(np.r_[min_y_free, trailing_vortices[i][:, 1]])
         max_y_trailing = np.max(np.r_[max_y_free, trailing_vortices[i][:, 1]])
 
-    min_x = min(-0.1, min_x_free, min_x_trailing)
-    max_x = max(max_x_free, max_x_trailing)
+    min_x = 1.1*min(-0.1, min_x_free, min_x_trailing)
+    max_x = 1.1*max(max_x_free, max_x_trailing)
 
-    min_y = min(min_y_free, min_y_trailing, np.min(bound_vortices[:, :, 1]))
-    max_y = max(max_y_free, max_y_trailing, np.max(bound_vortices[:, :, 1]))
+    min_y = 1.1*min(min_y_free, min_y_trailing, np.min(bound_vortices[:, :, 1]))
+    max_y = 1.1*max(max_y_free, max_y_trailing, np.max(bound_vortices[:, :, 1]))
 
     ax.set(xlim=[min_x, max_x], ylim=[min_y, max_y])
     line_bound, = ax.plot(bound_vortices[0, :, 0], bound_vortices[0, :, 1], ls_bound)
