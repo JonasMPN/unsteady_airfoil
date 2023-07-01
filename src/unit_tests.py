@@ -2,14 +2,16 @@ import numpy as np
 from geometry import Geometry, plot_process
 from induction import Induction
 from unsteady_aero import UnsteadyAirfoil
+import matplotlib.pyplot as plt
 
 test = {
 	"displacing": False,
 	"cp_induction": False,
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
-	"without_free": True,
-	"with_free": False
+	"without_free": False,
+	"with_free": False,
+	"velocity_field": True,
 }
 
 if test["displacing"]:
@@ -102,7 +104,7 @@ if test["lhs_matrix"]:
 
 if test["without_free"]:
 	time_steps = 600
-	dt = 0.08
+	dt = 0.15
 	plate_res = 1
 	flap_res = 1
 	plate_length = 1
@@ -110,8 +112,10 @@ if test["without_free"]:
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
 	plate_angles = np.zeros(time_steps)
 	plate_angles[:] = -10
+	plate_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
 	flap_angles = np.zeros(time_steps)
-	flap_angles[50:] = -10
+	# flap_angles[50:] = -10
+	flap_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
 	inflow = (1, 0)
 	circulation, coordinates = unsteady_airfoil.solve_for_process(dt=dt, plate_angles=plate_angles, inflows=inflow,
 													  			  flap_angles=flap_angles)
@@ -127,9 +131,9 @@ if test["with_free"]:
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
-	unsteady_airfoil.add_free_vortices(np.asarray([[5., 0.]]), 0.5)
+	unsteady_airfoil.add_free_vortices(np.asarray([[0., 3.]]), 0.5)
 	plate_angles = np.zeros(time_steps)
-	# plate_angles[:] = -10
+	plate_angles[:] = -10
 	flap_angles = np.zeros(time_steps)
 	# flap_angles[50:] = -10
 	inflow = (1, 0)
@@ -137,3 +141,52 @@ if test["with_free"]:
 													  			  flap_angles=flap_angles)
 	unsteady_airfoil.plot_final_state()
 	plot_process(**coordinates)
+
+if test["velocity_field"]:
+	time_steps = 200
+	dt = 0.1
+	plate_res = 5
+	flap_res = 3
+	plate_length = 1
+	flap_length = 1
+	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
+	plate_angles = np.zeros(time_steps)
+	plate_angles[10:] = -10
+	# plate_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
+	flap_angles = np.zeros(time_steps)
+	flap_angles[50:] = -40
+	# flap_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
+	inflow = (1, 0)
+	
+	# do normal calculation
+	circulation, positions = unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow,
+	                                                flap_angles=flap_angles)
+	# combine all calculated circulations into one row array
+	all_circulations = np.r_[circulation["plate"][time_steps-1], circulation["flap"][time_steps-1],
+	                         circulation["trailing"].flatten(), circulation["free"].flatten()]
+	# convert row array into column array
+	all_circulations = all_circulations.reshape((all_circulations.shape[0], 1))
+	# combine all vortices into an array
+	all_vortices = np.r_[positions["plate"], positions["flap"], positions["trailing"], positions["free"]]
+	
+	# resolution per axis of the flow field (equi-distant and same for all axes)
+	flow_field_axis_res = 30
+	coords = np.linspace(-1.5*plate_length, 1.5*plate_length, flow_field_axis_res)  # calculate coordinates
+	X, Y = np.meshgrid(coords, coords)  # use same coordinates for x and y. Get meshgrid
+	induction_points = np.vstack([X.ravel(), Y.ravel()]).T  # convert meshgrid into vector of all mesh points
+	
+	# pre-allocate memory
+	pre_allocate = np.empty((2, flow_field_axis_res**2, all_circulations.shape[0]), dtype=np.float32)
+	# calculate induction matrices in x and y direction
+	induction_xy = Induction(plate_res, flap_res).induction_matrices(vortices=all_vortices,
+                                                                     induction_points=induction_points,
+                                                                     save_to=pre_allocate)
+	
+	induction_x = induction_xy[0, :, :]  # induction matrix in x direction
+	induction_y = induction_xy[1, :, :]  # induction matrix in y direction
+	u_ind = (induction_x@all_circulations).reshape((flow_field_axis_res, flow_field_axis_res))  # induced velocity in x
+	v_ind = (induction_y@all_circulations).reshape((flow_field_axis_res, flow_field_axis_res))  # induced velocity in y
+	plt.quiver(X, Y, u_ind+inflow[0], v_ind+inflow[1])  # don't forget to add inflow
+	plt.show()
+	
+	
