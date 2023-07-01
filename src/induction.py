@@ -8,7 +8,7 @@ class Induction:
 		self.plate_res = plate_res
 		self.flap_res = flap_res
 		self.n_cp = self.plate_res+self.flap_res
-
+			
 	def lhs_matrix(self,
 				   bound_vortices: np.ndarray,
 				   shed_vortex: np.ndarray,
@@ -91,10 +91,6 @@ class Induction:
 				save_to[0, ip_i, v_i] = -vortex_to_ip[1]/(fac*distance**2)
 				save_to[1, ip_i, v_i] = vortex_to_ip[0]/(fac*distance**2)
 		return save_to[0, :, :]-save_to[0, :, :].T, save_to[1, :, :]-save_to[1, :, :].T
-
-	def _induction(self, vortex: np.ndarray, induction_point: np.ndarray):
-		direction, distance = self._unit_normal_and_length(induction_point-vortex)
-		return 1/(2*np.pi*distance)*direction
 
 	def _flap_normal(self, plate_control_points: np.ndarray, flap_control_points: np.ndarray):
 		if self.flap_res > 1:
