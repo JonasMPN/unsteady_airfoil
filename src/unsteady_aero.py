@@ -11,7 +11,7 @@ import timeit
 class UnsteadyAirfoil:
 	def __init__(self, max_time_steps: int,
 	             plate_res: int, plate_length: float,
-	             flap_res: int = None, flap_length: float = None):
+	             flap_res: int = 0, flap_length: float = None):
 		self.plate_res = plate_res
 		self.flap_res = flap_res
 		self.structure_res = plate_res+flap_res
@@ -23,7 +23,7 @@ class UnsteadyAirfoil:
 		self.n_free_vortices = 0
 		
 		self.geometry.set_plate(plate_length, plate_res)
-		if flap_res is not None:
+		if flap_res != 0:
 			self.geometry.set_flap(flap_length, flap_res)
 			self.use_flap = True
 	
@@ -215,6 +215,26 @@ class UnsteadyAirfoil:
 		        {"bound_vortices": all_bound, "control_points": all_cp, "trailing_vortices": all_trailing,
 		         "free_vortices" : all_free})
 	
+	def solve_steady(self,
+			         plate_angle: float,
+			         inflow: tuple,
+			         flap_angle: float = None,
+			         precision: np.dtype = np.float32) -> Tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
+		self.geometry.update_rotation(plate_angle=plate_angle, flap_angle=flap_angle)
+		bound, control, _, _ = self.geometry.get_positions()
+		combined_bound = np.r_[bound["plate"], bound["flap"]] if bound["flap"] is not None else bound["plate"]
+		lhs = self.induction.lhs_steady_matrix(bound_vortices=combined_bound, plate_control_points=control["plate"],
+		                                flap_control_points=control["flap"], precision=precision)
+		inv_lhs = np.linalg.inv(lhs)
+		plate_normal, flap_normal = self.geometry.get_normals()
+		normal_inflow = np.asarray([inflow[0], inflow[1]])@plate_normal*np.ones((self.plate_res, 1))
+		if self.flap_res != 0:
+			flap_inflow = np.asarray([inflow[0], inflow[1]])@flap_normal
+			normal_inflow = np.r_[normal_inflow, flap_inflow*np.ones((self.flap_res, 1))]
+		bound_circulation = -inv_lhs@normal_inflow
+		return ({"plate": bound_circulation[:self.plate_res], "flap": bound_circulation[self.plate_res:]},
+		        {"bound_vortices": bound, "control_points": control})
+		
 	def plot_final_state(self, show = True, plot_structure: bool = True,
 	                     ls_bound: str = "o",
 	                     ls_control: str = "x",
