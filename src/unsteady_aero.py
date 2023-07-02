@@ -70,21 +70,21 @@ class UnsteadyAirfoil:
 				self.geometry.update_rotation(plate_angle=plate_angle, flap_angle=flap_angle)
 				self.geometry.shed_vortex(inflow=inflow, time_step=dt, new_trailing_fac=shed_trailing_distance)
 				bound, control, trailing, free = self.geometry.get_positions()
-				combined_bound = np.r_[bound["plate"], bound["flap"]]
+				combined_bound = np.r_[bound["plate"], bound["flap"]] if self.flap_res != 0 else bound["plate"]
 				lhs = self.induction.lhs_matrix(bound_vortices=combined_bound, shed_vortex=trailing[-1, :],
 				                                plate_control_points=control["plate"],
 				                                flap_control_points=control["flap"])
 				inv_lhs = np.linalg.inv(lhs)
 				plate_normal, flap_normal = self.geometry.get_normals()
-				plate_inflow = np.asarray([inflow[0], inflow[1]])@plate_normal
-				flap_inflow = np.asarray([inflow[0], inflow[1]])@flap_normal
-				normal_inflow = np.r_[
-					plate_inflow*np.ones((self.plate_res, 1)), flap_inflow*np.ones((self.flap_res, 1))]
+				normal_inflow = np.asarray([inflow[0], inflow[1]])@plate_normal*np.ones((self.plate_res, 1))
+				if self.flap_res != 0:
+					flap_inflow = np.asarray([inflow[0], inflow[1]])@flap_normal
+					normal_inflow = np.r_[normal_inflow, flap_inflow*np.ones((self.flap_res, 1))]
 				old_plate_angle, old_flap_angle, old_inflow = plate_angle, flap_angle, inflow
 			else:
 				self.geometry.shed_vortex(inflow=inflow, time_step=dt, new_trailing_fac=shed_trailing_distance)
 				bound, control, trailing, free = self.geometry.get_positions()
-				combined_bound = np.r_[bound["plate"], bound["flap"]]
+				combined_bound = np.r_[bound["plate"], bound["flap"]] if self.flap_res != 0 else bound["plate"]
 			
 			cpi = self.induction.control_point_induction(plate_control_points=control["plate"],
 			                                             flap_control_points=control["flap"],
@@ -109,7 +109,8 @@ class UnsteadyAirfoil:
 			self.geometry.displace_vortices(velocities=np.c_[x_vel, y_vel]+background_flow, time_step=dt)
 			
 			plate_circulation[dt_i] = bound_circulation[:self.plate_res].reshape((1, self.plate_res))
-			flap_circulation[dt_i] = bound_circulation[self.plate_res:-1].reshape((1, self.flap_res))
+			if self.flap_res != 0:
+				flap_circulation[dt_i] = bound_circulation[self.plate_res:-1].reshape((1, self.flap_res))
 			if (dt_i-self.n_free_vortices)%20 == 0:
 				end_time = timeit.default_timer()
 				calc_time = np.round(end_time-start_time, 4)
@@ -160,24 +161,24 @@ class UnsteadyAirfoil:
 				self.geometry.update_rotation(plate_angle=plate_angle, flap_angle=flap_angle)
 				self.geometry.shed_vortex(inflow=inflow, time_step=dt, new_trailing_fac=shed_trailing_distance)
 				bound, control, trailing, free = self.geometry.get_positions()
-				combined_bound = np.r_[bound["plate"], bound["flap"]]
+				combined_bound = np.r_[bound["plate"], bound["flap"]] if self.flap_res != 0 else bound["plate"]
 				lhs = self.induction.lhs_matrix(bound_vortices=combined_bound, shed_vortex=trailing[-1, :],
 				                                plate_control_points=control["plate"],
 				                                flap_control_points=control["flap"], precision=precision)
 				inv_lhs = np.linalg.inv(lhs)
 				plate_normal, flap_normal = self.geometry.get_normals()
-				plate_inflow = np.asarray([inflow[0], inflow[1]])@plate_normal
-				flap_inflow = np.asarray([inflow[0], inflow[1]])@flap_normal
-				normal_inflow = np.r_[
-					plate_inflow*np.ones((self.plate_res, 1)), flap_inflow*np.ones((self.flap_res, 1))]
+				normal_inflow = np.asarray([inflow[0], inflow[1]])@plate_normal*np.ones((self.plate_res, 1))
+				if self.flap_res != 0:
+					flap_inflow = np.asarray([inflow[0], inflow[1]])@flap_normal
+					normal_inflow = np.r_[normal_inflow, flap_inflow*np.ones((self.flap_res, 1))]
 				old_plate_angle, old_flap_angle, old_inflow = plate_angle, flap_angle, inflow
 			else:
 				self.geometry.shed_vortex(inflow=inflow, time_step=dt, new_trailing_fac=shed_trailing_distance)
 				bound, control, trailing, free = self.geometry.get_positions()
-				combined_bound = np.r_[bound["plate"], bound["flap"]]
+				combined_bound = np.r_[bound["plate"], bound["flap"]] if self.flap_res != 0 else bound["plate"]
 			
 			all_bound[dt_i], all_trailing[dt_i], all_free[dt_i] = combined_bound, trailing, free
-			all_cp[dt_i] = np.r_[control["plate"], control["flap"]]
+			all_cp[dt_i] = np.r_[control["plate"], control["flap"]] if self.flap_res != 0 else control["plate"]
 			
 			cpi = self.induction.control_point_induction(plate_control_points=control["plate"],
 			                                             flap_control_points=control["flap"],
@@ -203,7 +204,8 @@ class UnsteadyAirfoil:
 			self.geometry.displace_vortices(velocities=np.c_[x_vel, y_vel]+background_flow, time_step=dt)
 			
 			plate_circulation[dt_i, :] = bound_circulation[:self.plate_res]
-			flap_circulation[dt_i, :] = bound_circulation[self.plate_res:-1]
+			if self.flap_res != 0:
+				flap_circulation[dt_i, :] = bound_circulation[self.plate_res:-1]
 			if dt_i%20 == 0:
 				end_time = timeit.default_timer()
 				calc_time = np.round(end_time-start_time, 4)

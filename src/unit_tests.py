@@ -9,10 +9,10 @@ test = {
 	"cp_induction": False,
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
-	"steady_solution": True,
+	"steady_solution": False,
 	"without_free": False,
 	"with_free": False,
-	"velocity_field": False,
+	"velocity_field": True,
 }
 
 if test["displacing"]:
@@ -159,12 +159,12 @@ if test["velocity_field"]:
 	time_steps = 200
 	dt = 0.1
 	plate_res = 5
-	flap_res = 3
+	flap_res = 0
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
 	plate_angles = np.zeros(time_steps)
-	plate_angles[10:] = -10
+	plate_angles[10:] = -45
 	# plate_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
 	flap_angles = np.zeros(time_steps)
 	flap_angles[50:] = -40
@@ -180,8 +180,11 @@ if test["velocity_field"]:
 	# convert row array into column array
 	all_circulations = all_circulations.reshape((all_circulations.shape[0], 1))
 	# combine all vortices into an array
-	all_vortices = np.r_[positions["plate"], positions["flap"], positions["trailing"], positions["free"]]
-	
+	if flap_res != 0:
+		all_vortices = np.r_[positions["plate"], positions["flap"], positions["trailing"], positions["free"]]
+	else:
+		all_vortices = np.r_[positions["plate"], positions["trailing"], positions["free"]]
+
 	# resolution per axis of the flow field (equi-distant and same for all axes)
 	flow_field_axis_res = 30
 	coords = np.linspace(-1.5*plate_length, 1.5*plate_length, flow_field_axis_res)  # calculate coordinates
