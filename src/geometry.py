@@ -225,6 +225,8 @@ class Geometry:
             return fig, ax
 
     def _flap_normal(self, plate_control_points: np.ndarray, flap_control_points: np.ndarray):
+        if self.flap_res is None:
+            return None
         if self.flap_res > 1:
             return self._unit_normal_and_length(flap_control_points[1, :]-flap_control_points[0, :])
         else:
