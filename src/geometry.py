@@ -257,9 +257,10 @@ def plot_process(bound_vortices: np.ndarray, control_points: np.ndarray,
                  trailing_vortices: np.ndarray, free_vortices: np.ndarray,
                  plate_res: int=0, flap_res: int=0,
                  ls_bound: str = "o", ls_control: str = "x", ls_trailing: str = "-", ls_free: str = "x",
-                 show: bool = True) -> None or animation.Animation:
+                 show: bool = True, size: tuple=(15,5), dpi: int=250) -> None or animation.Animation:
     fig, ax = plt.subplots()
-
+    fig.set_size_inches(size)
+    fig.set_dpi(dpi)
     n_free_vortices = free_vortices.size
     min_x_free = 0 if n_free_vortices == 0 else np.min(free_vortices[:, :, 0])
     max_x_free = 0 if n_free_vortices == 0 else np.max(free_vortices[:, :, 0])

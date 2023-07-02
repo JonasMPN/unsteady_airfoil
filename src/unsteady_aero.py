@@ -108,9 +108,9 @@ class UnsteadyAirfoil:
 			background_flow = np.asarray((dt_i_free+1)*[[inflow[0], inflow[1]]])
 			self.geometry.displace_vortices(velocities=np.c_[x_vel, y_vel]+background_flow, time_step=dt)
 			
-			plate_circulation[dt_i] = bound_circulation[:self.plate_res].reshape((1, self.plate_res))
+			plate_circulation[dt_i] = bound_circulation[:self.plate_res].flatten()
 			if self.flap_res != 0:
-				flap_circulation[dt_i] = bound_circulation[self.plate_res:-1].reshape((1, self.flap_res))
+				flap_circulation[dt_i] = bound_circulation[self.plate_res:-1].flatten()
 			if (dt_i-self.n_free_vortices)%20 == 0:
 				end_time = timeit.default_timer()
 				calc_time = np.round(end_time-start_time, 4)
@@ -203,9 +203,9 @@ class UnsteadyAirfoil:
 			background_flow = np.asarray((dt_i_free+1)*[[inflow[0], inflow[1]]])
 			self.geometry.displace_vortices(velocities=np.c_[x_vel, y_vel]+background_flow, time_step=dt)
 			
-			plate_circulation[dt_i, :] = bound_circulation[:self.plate_res]
+			plate_circulation[dt_i] = bound_circulation[:self.plate_res].flatten()
 			if self.flap_res != 0:
-				flap_circulation[dt_i, :] = bound_circulation[self.plate_res:-1]
+				flap_circulation[dt_i] = bound_circulation[self.plate_res:-1].flatten()
 			if dt_i%20 == 0:
 				end_time = timeit.default_timer()
 				calc_time = np.round(end_time-start_time, 4)

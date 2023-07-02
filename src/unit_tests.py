@@ -3,6 +3,7 @@ from geometry import Geometry, plot_process
 from induction import Induction
 from unsteady_aero import UnsteadyAirfoil
 import matplotlib.pyplot as plt
+from matplotlib import animation
 
 test = {
 	"displacing": False,
@@ -10,9 +11,9 @@ test = {
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
 	"steady_solution": False,
-	"without_free": False,
+	"without_free": True,
 	"with_free": False,
-	"velocity_field": True,
+	"velocity_field": False,
 }
 
 if test["displacing"]:
@@ -116,24 +117,32 @@ if test["lhs_matrix"]:
 	geom.plot_final_state(ls_trailing="x")
 
 if test["without_free"]:
-	time_steps = 200
-	dt = 0.15
-	plate_res = 1
-	flap_res = 0
+	time_steps = 500
+	dt = 0.1
+	plate_res = 5
+	flap_res = 3
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
 	plate_angles = np.zeros(time_steps)
-	plate_angles[:] = -10
-	plate_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
+	plate_angles[10:15] = -np.linspace(0, 10, 5)
+	plate_angles[15:200] = -10
+	plate_angles[200:205] = -np.linspace(10, 0, 5)
+	plate_angles[300:330] = 15*np.sin(np.linspace(0, 2*np.pi, 30))
+	plate_angles[390:400] = -np.linspace(0, 30, 10)
+	plate_angles[400:] = -30
+	# plate_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
 	flap_angles = np.zeros(time_steps)
-	# flap_angles[50:] = -10
-	flap_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
+	flap_angles[100:107] = -np.linspace(0, 20, 7)
+	flap_angles[107:200] = -20
+	flap_angles[200:205] = -np.linspace(20, 0, 5)
+	# flap_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
 	inflow = (1, 0)
 	circulation, coordinates = unsteady_airfoil.solve_for_process(dt=dt, plate_angles=plate_angles, inflows=inflow,
 													  			  flap_angles=flap_angles)
-	unsteady_airfoil.plot_final_state()
-	plot_process(**coordinates)
+	# unsteady_airfoil.plot_final_state()
+	ani = plot_process(**coordinates, show=False)
+	ani.save("../results/unit_tests/without_free.mp4", writer=animation.FFMpegWriter(fps=30))
 
 
 if test["with_free"]:
