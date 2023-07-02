@@ -30,6 +30,29 @@ class Induction:
 		pre_allocated = np.ones((2, self.n_cp+1, self.n_cp+1), dtype=precision)
 		induction = self.induction_matrices(bound_vortices, control_points, pre_allocated, (x_normals, y_normals))
 		return induction[0, :, :]+induction[1, :, :]
+	
+	def lhs_steady_matrix(self,
+					      bound_vortices: np.ndarray,
+					      plate_control_points: np.ndarray,
+					      flap_control_points: np.ndarray = None,
+					      precision: np.typecodes = np.float64):
+		plate_normal, _ = self._unit_normal_and_length(bound_vortices[0, :])
+		flap_normal = None if self.flap_res == 0 else self._flap_normal(plate_control_points, flap_control_points)
+
+		control_points = plate_control_points if self.flap_res == 0 else np.r_[plate_control_points, flap_control_points]
+		bound_vortices = bound_vortices.astype(precision)
+		control_points.astype(precision)
+		if self.flap_res == 0:
+			x_normals = plate_normal[0]*np.ones((self.plate_res, self.n_cp), dtype=precision)
+			y_normals = plate_normal[1]*np.ones((self.plate_res, self.n_cp), dtype=precision)
+		else:
+			x_normals = np.r_[plate_normal[0]*np.ones((self.plate_res, self.n_cp)),
+							  flap_normal[0]*np.ones((self.flap_res, self.n_cp))].astype(precision)
+			y_normals = np.r_[plate_normal[1]*np.ones((self.plate_res, self.n_cp)),
+							  flap_normal[1]*np.ones((self.flap_res, self.n_cp))].astype(precision)
+		pre_allocated = np.empty((2, self.n_cp, self.n_cp), dtype=precision)
+		induction = self.induction_matrices(bound_vortices, control_points, pre_allocated, (x_normals, y_normals))
+		return induction[0, :, :]+induction[1, :, :]
 
 	def control_point_induction(self,
 								plate_control_points: np.ndarray,
