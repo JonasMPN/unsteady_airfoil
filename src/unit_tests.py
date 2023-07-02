@@ -9,9 +9,10 @@ test = {
 	"cp_induction": False,
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
+	"steady_solution": True,
 	"without_free": False,
 	"with_free": False,
-	"velocity_field": True,
+	"velocity_field": False,
 }
 
 if test["displacing"]:
@@ -32,16 +33,16 @@ if test["displacing"]:
 if test["cp_induction"]:
 	time_steps = 10
 	dt = 0.1
-	blade_res = 1
+	plate_res = 1
 	flap_res = 1
 	geom = Geometry(time_steps)
-	geom.set_plate(1, blade_res)
+	geom.set_plate(1, plate_res)
 	geom.set_flap(0.5, flap_res)
 	geom.update_rotation(0, 0)
 	geom.shed_vortex((1, 0), time_step=0.5)
 	geom.add_free_vortices(np.asarray([[3, 1]]))
 
-	ind = Induction(blade_res, flap_res)
+	ind = Induction(plate_res, flap_res)
 
 	bound, control, trailing, free = geom.get_positions()
 	print("Inversely calculated distances from the free vortices to the control points:")
@@ -53,10 +54,10 @@ if test["cp_induction"]:
 if test["free_vortex_induction"]:
 	time_steps = 10
 	dt = 0.1
-	blade_res = 1
+	plate_res = 1
 	flap_res = 1
 	geom = Geometry(time_steps)
-	geom.set_plate(1, blade_res)
+	geom.set_plate(1, plate_res)
 	geom.set_flap(1, flap_res)
 	geom.update_rotation(0, 0)
 	geom.shed_vortex((1, 0), time_step=0.5)
@@ -64,7 +65,7 @@ if test["free_vortex_induction"]:
 	geom.shed_vortex((1, 0), time_step=0.5)
 	geom.add_free_vortices(np.asarray([[2., 0.]]))
 
-	ind = Induction(blade_res, flap_res)
+	ind = Induction(plate_res, flap_res)
 
 	bound, control, trailing, free = geom.get_positions()
 	bound = np.r_[bound["plate"], bound["flap"]]
@@ -84,29 +85,41 @@ if test["free_vortex_induction"]:
 	print("y")
 	print(from_bound["y"])
 	geom.plot_final_state()
+	
+if test["steady_solution"]:
+	plate_res = 1
+	plate_length = 1
+	unsteady_airfoil = UnsteadyAirfoil(0, plate_res, plate_length)
+	plate_angle = -10
+	inflow = (1, 0)
+	circulations, positions = unsteady_airfoil.solve_steady(plate_angle, inflow)
+	analytical_sol = inflow[0]*np.pi*plate_length*np.deg2rad(plate_angle)
+	print("analytical solution: ", analytical_sol, ". Model solution: ",  np.sum(circulations["plate"]))
+	print("analytical minus model: ", analytical_sol-np.sum(circulations["plate"]))
+	unsteady_airfoil.plot_final_state()
 
 if test["lhs_matrix"]:
 	time_steps = 10
 	dt = 0.05
-	blade_res = 1
+	plate_res = 1
 	flap_res = 1
 	geom = Geometry(time_steps)
-	geom.set_plate(1, blade_res)
+	geom.set_plate(1, plate_res)
 	geom.set_flap(1, flap_res)
 	geom.update_rotation(0, 0)
 	geom.shed_vortex((1, 0), time_step=0.5)
 
-	ind = Induction(blade_res, flap_res)
+	ind = Induction(plate_res, flap_res)
 	bound, control, trailing, free = geom.get_positions()
 	bound = np.r_[bound["plate"], bound["flap"]]
 	print(ind.lhs_matrix(bound, trailing[-1], control["plate"], control["flap"]))
 	geom.plot_final_state(ls_trailing="x")
 
 if test["without_free"]:
-	time_steps = 600
+	time_steps = 200
 	dt = 0.15
 	plate_res = 1
-	flap_res = 1
+	flap_res = 0
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
