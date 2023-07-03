@@ -11,8 +11,8 @@ test = {
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
 	"steady_solution": False,
-	"without_free": True,
-	"with_free": False,
+	"without_free": False,
+	"with_free": True,
 	"velocity_field": False,
 }
 
@@ -153,7 +153,7 @@ if test["with_free"]:
 	plate_length = 1
 	flap_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
-	unsteady_airfoil.add_free_vortices(np.asarray([[0., 3.]]), 0.5)
+	# unsteady_airfoil.add_free_vortices(np.asarray([[-0., 3.]]), 0.)
 	plate_angles = np.zeros(time_steps)
 	plate_angles[:] = -10
 	flap_angles = np.zeros(time_steps)
