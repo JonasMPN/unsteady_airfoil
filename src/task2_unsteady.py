@@ -11,9 +11,12 @@ def unsteady_sinusoidal(k, A):
     A : amplitude in degrees
     k: reduced freq
     """
+    # -----------------------------_#
+    # Parameters
+    # -----------------------------_#
 
-    time_steps = 300
-    dt = 0.1
+    time_steps = 1000
+    dt = 0.2
     time_array = np.arange(0, dt*time_steps, dt)
 
     plate_res = 5
@@ -23,9 +26,13 @@ def unsteady_sinusoidal(k, A):
     
     inflow = (1, 0)
     omega = k * 2 * np.linalg.norm(inflow)/ (plate_length)
+    
+    # -----------------------------_#
+    # Unsteady computation
+    # -----------------------------_#
      
     unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
-    plate_angles = A * np.cos(omega * time_array)     # np.linspace(0, t_sim, dt))
+    plate_angles = A * np.sin(omega * time_array)     # np.linspace(0, t_sim, dt))
     
     # plate_angles = -10*np.sin(5*np.linspace(0, 2*np.pi, time_steps))
 
@@ -33,6 +40,10 @@ def unsteady_sinusoidal(k, A):
     # do normal calculation
     circulation, positions = unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow)
     # combine all calculated circulations into one row array
+    
+    # -----------------------------_#
+    # Postprocessing
+    # -----------------------------_#
 
     # This is where the time step is selected
     all_circulations = np.r_[circulation["plate"][time_steps-1], circulation["flap"][time_steps-1],
@@ -75,18 +86,41 @@ def unsteady_sinusoidal(k, A):
     
     u_ind = (induction_x@all_circulations).reshape((y_flow_field_axis_res, x_flow_field_axis_res))  # induced velocity in x
     v_ind = (induction_y@all_circulations).reshape((y_flow_field_axis_res, x_flow_field_axis_res))  # induced velocity in y
-    breakpoint()
     plt.figure(1)
     levels = np.linspace(-0.1, 0.1, 10)
     plt.contourf(X, Y, u_ind, levels=levels)
     plt.colorbar()
     plt.figure(2)
     plt.quiver(X, Y, u_ind+inflow[0], v_ind+inflow[1])  # don't forget to add inflow
+
+    # ------------------------------------------------ #
+    # Lift coefficient plot
+    # ------------------------------------------------ #
+    
+    circulation_combined = np.sum(circulation["plate"], 1)  # sum of all circulations, for each individual timestep
+    # cl = rhu * u * circulation_combined / (0.5 * rho * u **2 )
+
+    cl = circulation_combined / (0.5 * np.linalg.norm(inflow) * plate_length)
+    # cl_analytical[i] = 2 * np.pi * np.sin(np.deg2rad(angle))
+
+    plt.figure(3)
+    plt.plot(plate_angles, cl)
+    plt.arrow(plate_angles[0], cl[0], plate_angles[5], cl[5], color="C0",  # not so nice but it works ...
+              shape="full", lw=2, length_includes_head=True, head_width=.1)
+    # , shape='full', lw=5,
+    #   length_includes_head=True, head_width=.02)
+    plt.xlabel(r"$\alpha$")
+    plt.ylabel(r"$C_l$")
+    plt.grid()
+    plt.savefig(f"../results/unsteady_k{k}_cl.pdf", bbox_inches="tight")
+    
     plt.show()
 
 
 if __name__=="__main__":
     A = 10  # max angle 
     k_vals = [0.02, 0.05, 0.1]  # different reduced frequencies
-    k = k_vals[2]
+    k = k_vals[0]
     unsteady_sinusoidal(k, A)
+
+
