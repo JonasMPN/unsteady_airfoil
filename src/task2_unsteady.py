@@ -101,16 +101,19 @@ def unsteady_sinusoidal(k, A):
     # cl = rhu * u * circulation_combined / (0.5 * rho * u **2 )
 
     cl = circulation_combined / (0.5 * np.linalg.norm(inflow) * plate_length)
+    cl_analytical = 2 * np.pi * np.sin(np.deg2rad(np.linspace(-A, A, 20)))
     # cl_analytical[i] = 2 * np.pi * np.sin(np.deg2rad(angle))
 
     plt.figure(3)
-    plt.plot(plate_angles, cl)
+    plt.plot(plate_angles, cl, label="unsteady")
+    plt.plot(np.linspace(-A, A, 20), cl_analytical, "--r", label="steady")
     plt.arrow(plate_angles[0], cl[0], plate_angles[5], cl[5], color="C0",  # not so nice but it works ...
               shape="full", lw=2, length_includes_head=True, head_width=.1)
     # , shape='full', lw=5,
     #   length_includes_head=True, head_width=.02)
     plt.xlabel(r"$\alpha$")
     plt.ylabel(r"$C_l$")
+    plt.legend()
     plt.grid()
     plt.savefig(f"../results/unsteady_k{k}_cl.pdf", bbox_inches="tight")
     
@@ -120,7 +123,7 @@ def unsteady_sinusoidal(k, A):
 if __name__=="__main__":
     A = 10  # max angle 
     k_vals = [0.02, 0.05, 0.1]  # different reduced frequencies
-    k = k_vals[0]
+    k = k_vals[2]
     unsteady_sinusoidal(k, A)
 
 
