@@ -5,6 +5,12 @@ from induction import Induction
 from unsteady_aero import UnsteadyAirfoil
 from matplotlib import ticker, cm
 
+
+test = {
+	"unsteady_sinusoidal": False,
+	"step_response": True,
+}
+
 def unsteady_sinusoidal(k, A):
     """
     Compute the unsteady airfoil pitching motion at a reduced frequency k with amplitude A
@@ -119,11 +125,62 @@ def unsteady_sinusoidal(k, A):
     
     plt.show()
 
+def step_response(A):
+    
+    
+    # -----------------------------_#
+    # Parameters
+    # -----------------------------_#
+
+    time_steps = 200
+    dt = 0.5
+    time_array = np.arange(0, dt*time_steps, dt)
+    plate_res = 5
+    flap_res = 0
+    plate_length = 1
+    flap_length = 0
+    inflow = (1, 0)
+    # omega = k * 2 * np.linalg.norm(inflow)/ (plate_length)
+    
+    # -----------------------------_#
+    # Unsteady computation
+    # -----------------------------_#
+     
+    unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
+    plate_angles = np.zeros(len(time_array))
+    plate_angles[5:] = A
+    circulation, positions = unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow)
+    
+    circulation_combined = np.sum(circulation["plate"], 1)  # sum of all circulations, for each individual timestep
+    cl = circulation_combined / (0.5 * np.linalg.norm(inflow) * plate_length)
+    cl_analytical = 2 * np.pi * np.deg2rad(A)
+    
+    s = (np.linalg.norm(inflow)/plate_length/2)*time_array
+    
+    C1, C2, eps1, eps2 = 0.165, 0.335, 0.0455, 0.3
+    cl_wagner = (1-C1*np.exp(-eps1*s)-C2*np.exp(-eps2*s))*cl_analytical
+    
+    cl_kussner = (1-0.5*(np.exp(-0.13*s)+np.exp(-s)))*cl_analytical
+    
+    # print(cl/cl_analytical)
+    plt.plot(time_array, cl/cl_analytical, label = "Panel code")
+    # plt.plot(time_array, cl_kussner/cl_analytical, label = "Küssner")
+    plt.plot(time_array, cl_wagner/cl_analytical, label = "Wagner")
+    plt.xlabel("Time [s]")
+    plt.ylabel(r"$C_L/C_{L_{st}}$")
+    plt.legend()
+    plt.grid()
+    
+
 
 if __name__=="__main__":
-    A = 10  # max angle 
-    k_vals = [0.02, 0.05, 0.1]  # different reduced frequencies
-    k = k_vals[2]
-    unsteady_sinusoidal(k, A)
+    if test["unsteady_sinusoidal"]:
+        A = 10  # max angle 
+        k_vals = [0.02, 0.05, 0.1]  # different reduced frequencies
+        k = k_vals[2]
+        unsteady_sinusoidal(k, A)
+    if test["step_response"]:
+        A = 5  # initial angle
+        step_response(A)
 
 

@@ -10,8 +10,8 @@ test = {
 	"cp_induction": False,
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
-	"steady_solution": False,
-	"without_free": True,
+	"steady_solution": True,
+	"without_free": False,
 	"with_free": False,
 	"velocity_field": False,
 }
