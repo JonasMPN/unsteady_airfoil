@@ -11,8 +11,8 @@ test = {
 	"free_vortex_induction": False,
 	"lhs_matrix": False,
 	"steady_solution": False,
-	"without_free": False,
-	"with_free": True,
+	"without_free": True,
+	"with_free": False,
 	"velocity_field": False,
 }
 
@@ -142,7 +142,8 @@ if test["without_free"]:
 													  			  flap_angles=flap_angles)
 	# unsteady_airfoil.plot_final_state()
 	ani = plot_process(**coordinates, show=False)
-	ani.save("../results/unit_tests/without_free.mp4", writer=animation.FFMpegWriter(fps=30))
+	if False:
+		ani.save("../results/unit_tests/without_free.mp4", writer=animation.FFMpegWriter(fps=30))
 
 
 if test["with_free"]:

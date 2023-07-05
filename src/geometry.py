@@ -1,5 +1,6 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+from scipy.interpolate import splprep, splev
 import numpy as np
 from copy import copy
 from helper_functions import Helper
@@ -288,9 +289,15 @@ def plot_process(bound_vortices: np.ndarray, control_points: np.ndarray,
     title = ax.text(0.5, 0, "0")
 
     def update(frame: int):
+        if len(trailing_vortices[frame][:, 0]) > 5:
+            tck, u = splprep([trailing_vortices[frame][:, 0], trailing_vortices[frame][:, 1]], k=4, s=0)
+            u_new = np.linspace(0, 1, num=10000)
+            x_spline, y_spline = splev(u_new, tck)
+            line_trailing.set_data(x_spline, y_spline)
+        else:
+            line_trailing.set_data(trailing_vortices[frame][:, 0], trailing_vortices[frame][:, 1])
         line_bound.set_data(bound_vortices[frame, :, 0], bound_vortices[frame, :, 1])
         line_cp.set_data(control_points[frame, :, 0], control_points[frame, :, 1])
-        line_trailing.set_data(trailing_vortices[frame][:, 0], trailing_vortices[frame][:, 1])
         line_free.set_data(free_vortices[frame, :, 0], free_vortices[frame, :, 1])
         title.set_text(frame)
         return line_bound, line_cp, line_trailing, line_free, title
