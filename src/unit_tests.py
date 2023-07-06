@@ -91,7 +91,7 @@ if test["steady_solution"]:
 	plate_res = 1
 	plate_length = 1
 	unsteady_airfoil = UnsteadyAirfoil(0, plate_res, plate_length)
-	plate_angle = -10
+	plate_angle = 10
 	inflow = (1, 0)
 	circulations, positions = unsteady_airfoil.solve_steady(plate_angle, inflow)
 	analytical_sol = inflow[0]*np.pi*plate_length*np.deg2rad(plate_angle)

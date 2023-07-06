@@ -8,7 +8,8 @@ from matplotlib import ticker, cm
 
 test = {
 	"unsteady_sinusoidal": False,
-	"step_response": True,
+	"step_response": False,
+	"gust_response": True,
 }
 
 def unsteady_sinusoidal(k, A):
@@ -132,12 +133,12 @@ def step_response(A):
     # Parameters
     # -----------------------------_#
 
-    time_steps = 200
-    dt = 0.5
+    time_steps = 50
+    dt = 4
     time_array = np.arange(0, dt*time_steps, dt)
     plate_res = 5
     flap_res = 0
-    plate_length = 1
+    plate_length = 10
     flap_length = 0
     inflow = (1, 0)
     # omega = k * 2 * np.linalg.norm(inflow)/ (plate_length)
@@ -148,14 +149,14 @@ def step_response(A):
      
     unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
     plate_angles = np.zeros(len(time_array))
-    plate_angles[5:] = A
+    plate_angles[:] = A
     circulation, positions = unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow)
     
     circulation_combined = np.sum(circulation["plate"], 1)  # sum of all circulations, for each individual timestep
     cl = circulation_combined / (0.5 * np.linalg.norm(inflow) * plate_length)
-    cl_analytical = 2 * np.pi * np.deg2rad(A)
+    cl_analytical = 2 * np.pi * np.sin(np.deg2rad(A))
     
-    s = (np.linalg.norm(inflow)/plate_length/2)*time_array
+    s = (np.linalg.norm(inflow)*2/plate_length)*time_array
     
     C1, C2, eps1, eps2 = 0.165, 0.335, 0.0455, 0.3
     cl_wagner = (1-C1*np.exp(-eps1*s)-C2*np.exp(-eps2*s))*cl_analytical
@@ -163,13 +164,66 @@ def step_response(A):
     cl_kussner = (1-0.5*(np.exp(-0.13*s)+np.exp(-s)))*cl_analytical
     
     # print(cl/cl_analytical)
-    plt.plot(time_array, cl/cl_analytical, label = "Panel code")
+    plt.plot(s, cl/cl_analytical, label = "Panel code", color = "blue", ls = "dashed")
     # plt.plot(time_array, cl_kussner/cl_analytical, label = "Küssner")
-    plt.plot(time_array, cl_wagner/cl_analytical, label = "Wagner")
-    plt.xlabel("Time [s]")
+    plt.plot(s, cl_wagner/cl_analytical, label = "Wagner", color = "red", ls = "solid")
+    plt.xlabel(r"$s = \dfrac{U_\infty t}{b}$")
     plt.ylabel(r"$C_L/C_{L_{st}}$")
     plt.legend()
     plt.grid()
+    plt.tight_layout()
+    
+    
+def gust_response():
+        
+    
+    # -----------------------------_#
+    # Parameters
+    # -----------------------------_#
+
+    time_steps = 200
+    dt = 2
+    time_array = np.arange(0, dt*time_steps, dt)
+    plate_res = 5
+    flap_res = 0
+    plate_length = 10
+    flap_length = 0
+    A = 0
+
+    inflow = [(1, 0) if i < len(time_array)//2 else (1, 0.01) for i in range(len(time_array))]
+    A_rel = np.zeros(len(time_array)) # airfoil angle relative to flow
+    for i, u in enumerate(inflow):
+        A_rel[i] = np.rad2deg(np.arctan(u[1]/u[0]))+A
+        
+    inflow = (1, 0)
+    # -----------------------------_#
+    # Unsteady computation
+    # -----------------------------_#
+    s = (np.linalg.norm(inflow)*2/plate_length)*time_array
+    cl_analytical = 2 * np.pi * np.sin(np.deg2rad(A_rel))
+    
+    
+    unsteady_airfoil = UnsteadyAirfoil(time_steps, plate_res, plate_length, flap_res, flap_length)
+    plate_angles = np.ones(len(time_array))*A_rel
+    circulation, positions = unsteady_airfoil.solve(dt=dt, plate_angles=plate_angles, inflows=inflow)
+    
+    circulation_combined = np.sum(circulation["plate"], 1)  # sum of all circulations, for each individual timestep
+    cl = circulation_combined / (0.5 * np.linalg.norm(inflow) * plate_length)
+
+
+    
+    C1, C2, eps1, eps2 = 0.165, 0.335, 0.0455, 0.3
+    cl_wagner = (1-C1*np.exp(-eps1*s)-C2*np.exp(-eps2*s))
+    cl_kussner = (1-0.5*(np.exp(-0.13*s)+np.exp(-s)))
+    
+    plt.plot(s, cl/cl_analytical, label = "Panel code", color = "blue", ls = "dashed")
+    plt.plot(s, cl_kussner, label = "Küssner")
+    plt.plot(s, cl_wagner, label = "Wagner", color = "red", ls = "solid")
+    plt.xlabel(r"$s = \dfrac{U_\infty t}{b}$")
+    plt.ylabel(r"$C_L/C_{L_{st}}$")
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
     
 
 
@@ -180,7 +234,8 @@ if __name__=="__main__":
         k = k_vals[2]
         unsteady_sinusoidal(k, A)
     if test["step_response"]:
-        A = 5  # initial angle
+        A = 1  # angle
         step_response(A)
-
+    if test[	"gust_response"]:
+        gust_response()
 

@@ -44,14 +44,19 @@ for i, angle in enumerate(angles):
 
     cl[i] = circulation_combined / (0.5 * inflow[0] * plate_length)
     cl_analytical[i] = 2 * np.pi * np.sin(np.deg2rad(angle))
+cl_rms = np.sqrt(np.mean(cl-cl_analytical)**2)
+cl_rms_round = np.round(cl_rms, 2 - int(np.floor(np.log10(abs(cl_rms)))))
+
+
 
 plt.figure(1)
-plt.scatter(angles, cl, label="Code")
-plt.plot(angles, cl_analytical, label="analytical")
+plt.plot(angles, cl_analytical, label="Analytical")
+plt.scatter(angles, cl, label="Panel code", marker = "x", color ="black")
+plt.text(0.02, 0.95, f'RMS: {cl_rms_round}', verticalalignment='top', horizontalalignment='left',transform=plt.gca().transAxes)
 plt.grid()
 plt.xlabel(r"$\alpha$")
 plt.ylabel(r"$C_l$")
-plt.legend()
+plt.legend(loc="lower right")
 plt.savefig("../results/cl_polar.pdf", bbox_inches="tight")
 #plt.show()
 
