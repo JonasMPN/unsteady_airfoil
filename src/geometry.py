@@ -200,7 +200,7 @@ class Geometry:
         :param ls_free: Line style for the free vortices
         :return:
         """
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(8, 2))
         ax.plot(self.bound_vortices[:, 0], self.bound_vortices[:, 1], ls_bound)
         ax.plot(self.control_points[:, 0], self.control_points[:, 1], ls_control)
         if plot_structure:
@@ -220,6 +220,9 @@ class Geometry:
         if self.free_vortices.shape[0] != 0:
             ax.plot(self.free_vortices[:, 0], self.free_vortices[:, 1], ls_free)
         if show:
+            plt.xlabel("x/c")
+            plt.ylabel("y/c")
+            plt.tight_layout()
             plt.show()
             return None
         else:
@@ -280,7 +283,7 @@ def plot_process(bound_vortices: np.ndarray, control_points: np.ndarray,
 
     min_y = 1.1*min(min_y_free, min_y_trailing, np.min(bound_vortices[:, :, 1]))
     max_y = 1.1*max(max_y_free, max_y_trailing, np.max(bound_vortices[:, :, 1]))
-
+    
     ax.set(xlim=[min_x, max_x], ylim=[min_y, max_y])
     line_bound, = ax.plot(bound_vortices[0, :, 0], bound_vortices[0, :, 1], ls_bound)
     line_cp, = ax.plot(control_points[0, :, 0], control_points[0, :, 1], ls_control)
@@ -290,7 +293,7 @@ def plot_process(bound_vortices: np.ndarray, control_points: np.ndarray,
 
     def update(frame: int):
         if len(trailing_vortices[frame][:, 0]) > 5:
-            tck, u = splprep([trailing_vortices[frame][:, 0], trailing_vortices[frame][:, 1]], k=4, s=0)
+            tck, u = splprep([trailing_vortices[frame][:, 0], trailing_vortices[frame][:, 1]], k=2, s=0)
             u_new = np.linspace(0, 1, num=10000)
             x_spline, y_spline = splev(u_new, tck)
             line_trailing.set_data(x_spline, y_spline)
